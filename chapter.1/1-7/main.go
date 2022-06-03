@@ -1,18 +1,33 @@
 package main
 
 import (
-	"flag"
-	"log"
+	"fmt"
+
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	FlagStr = flag.String("string", "default", "文字列フラグ")
-	FlagInt = flag.Int("int", -1, "数値フラグ")
+	defaultLanguage = kingpin.Flag("default-language", "Default Language").String()
+
+	generateCmd = kingpin.Command("create-index", "Generate Index")
+	inputFolder = generateCmd.Arg("INPUT", "Input Folder").Required().String()
+
+	searchCmd  = kingpin.Command("search", "Search")
+	inputFile  = searchCmd.Flag("input", "Input index file").Short('i').String()
+	searchWord = searchCmd.Arg("WORDS", "Search words").Strings()
 )
 
 func main() {
-	flag.Parse()
-	log.Println(*FlagStr)
-	log.Println(*FlagInt)
-	log.Println(flag.Args())
+	switch kingpin.Parse() {
+	case generateCmd.FullCommand():
+		fmt.Println(*defaultLanguage)
+		fmt.Println(*inputFolder)
+		fmt.Println(*inputFile)
+		fmt.Println(*searchWord)
+	case searchCmd.FullCommand():
+		fmt.Println(*defaultLanguage)
+		fmt.Println(*inputFolder)
+		fmt.Println(*inputFile)
+		fmt.Println(*searchWord)
+	}
 }
