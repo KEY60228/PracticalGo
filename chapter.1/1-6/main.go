@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Portion int
 
@@ -16,31 +18,26 @@ type Udon struct {
 	ebiten   uint
 }
 
-func NewKakeUdon(p Portion) *Udon {
-	return &Udon{
-		men:      p,
-		aburaage: false,
-		ebiten:   0,
-	}
+type Option struct {
+	men      Portion
+	aburaage bool
+	ebiten   uint
 }
 
-func NewKitsuneUdon(p Portion) *Udon {
+func NewUdon(opt Option) *Udon {
 	return &Udon{
-		men:      p,
-		aburaage: true,
-		ebiten:   0,
-	}
-}
-
-func NewTempuraUdon(p Portion) *Udon {
-	return &Udon{
-		men:      p,
-		aburaage: false,
-		ebiten:   3,
+		men:      opt.men,
+		aburaage: opt.aburaage,
+		ebiten:   opt.ebiten,
 	}
 }
 
 func main() {
-	tempuraUdon := NewTempuraUdon(Large)
+	opt := Option{
+		men:      Large,
+		aburaage: false,
+		ebiten:   3,
+	}
+	tempuraUdon := NewUdon(opt)
 	fmt.Println(tempuraUdon)
 }
