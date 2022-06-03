@@ -1,33 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/kelseyhightower/envconfig"
 )
 
-var (
-	defaultLanguage = kingpin.Flag("default-language", "Default Language").String()
-
-	generateCmd = kingpin.Command("create-index", "Generate Index")
-	inputFolder = generateCmd.Arg("INPUT", "Input Folder").Required().String()
-
-	searchCmd  = kingpin.Command("search", "Search")
-	inputFile  = searchCmd.Flag("input", "Input index file").Short('i').String()
-	searchWord = searchCmd.Arg("WORDS", "Search words").Strings()
-)
+type Config struct {
+	Port      uint16 `envconfig:"PORT" default:"3000"`
+	Host      string `envconfig:"HOST" required:"true"`
+	AdminPort uint16 `envconfig:"ADMIN_PORT" default:"3001"`
+}
 
 func main() {
-	switch kingpin.Parse() {
-	case generateCmd.FullCommand():
-		fmt.Println(*defaultLanguage)
-		fmt.Println(*inputFolder)
-		fmt.Println(*inputFile)
-		fmt.Println(*searchWord)
-	case searchCmd.FullCommand():
-		fmt.Println(*defaultLanguage)
-		fmt.Println(*inputFolder)
-		fmt.Println(*inputFile)
-		fmt.Println(*searchWord)
+	var c Config
+	err := envconfig.Process("", &c)
+	if err != nil {
+		log.Fatal(err)
 	}
+	log.Println(c)
 }
