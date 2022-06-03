@@ -18,39 +18,35 @@ type Udon struct {
 	ebiten   uint
 }
 
-type fluentOpt struct {
-	men      Portion
-	aburaage bool
-	ebiten   uint
+type OptFunc func(r *Udon)
+
+func NewUdon(opts ...OptFunc) *Udon {
+	r := &Udon{}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r
 }
 
-func NewUdon(p Portion) *fluentOpt {
-	return &fluentOpt{
-		men:      p,
-		aburaage: false,
-		ebiten:   1,
+func OptMen(p Portion) OptFunc {
+	return func(r *Udon) {
+		r.men = p
 	}
 }
 
-func (o *fluentOpt) Aburaage() *fluentOpt {
-	o.aburaage = true
-	return o
+func OptAburaage() OptFunc {
+	return func(r *Udon) {
+		r.aburaage = true
+	}
 }
 
-func (o *fluentOpt) Ebiten(n uint) *fluentOpt {
-	o.ebiten = n
-	return o
-}
-
-func (o *fluentOpt) Order() *Udon {
-	return &Udon{
-		men:      o.men,
-		aburaage: o.aburaage,
-		ebiten:   o.ebiten,
+func OptEbiten(n uint) OptFunc {
+	return func(r *Udon) {
+		r.ebiten = n
 	}
 }
 
 func main() {
-	tempuraUdon := NewUdon(Large).Ebiten(3).Order()
+	tempuraUdon := NewUdon(OptMen(Large), OptEbiten(3))
 	fmt.Println(tempuraUdon)
 }
