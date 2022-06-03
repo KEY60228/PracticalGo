@@ -16,15 +16,31 @@ type Udon struct {
 	ebiten   uint
 }
 
-func NewUdon(p Portion, aburaage bool, ebiten uint) *Udon {
+func NewKakeUdon(p Portion) *Udon {
 	return &Udon{
 		men:      p,
-		aburaage: aburaage,
-		ebiten:   ebiten,
+		aburaage: false,
+		ebiten:   0,
+	}
+}
+
+func NewKitsuneUdon(p Portion) *Udon {
+	return &Udon{
+		men:      p,
+		aburaage: true,
+		ebiten:   0,
+	}
+}
+
+func NewTempuraUdon(p Portion) *Udon {
+	return &Udon{
+		men:      p,
+		aburaage: false,
+		ebiten:   3,
 	}
 }
 
 func main() {
-	tempraUdon := NewUdon(Large, false, 2)
-	fmt.Println(tempraUdon)
+	tempuraUdon := NewTempuraUdon(Large)
+	fmt.Println(tempuraUdon)
 }
