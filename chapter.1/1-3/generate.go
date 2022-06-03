@@ -1,4 +1,4 @@
 package main
 
-//go:generate stringer -type=CarOption
-//go:generate stringer -type=CarType
+//go:generate enumer -type=CarOption -json
+//go:generate enumer -type=CarType -json

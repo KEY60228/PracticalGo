@@ -32,4 +32,10 @@ func main() {
 
 	fmt.Printf("%T, %d, %s\n", suv, suv, suv)
 	fmt.Printf("%T, %d, %s\n", awd, awd, awd)
+
+	fmt.Println(CarTypeValues())
+	fmt.Println(CarOptionValues())
+
+	fmt.Println(CarTypeString("SUV"))
+	fmt.Println(CarOptionString("GPS"))
 }
