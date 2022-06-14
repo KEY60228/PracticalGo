@@ -18,6 +18,10 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.44.2
+          working-directory: ./...
           args: --disable-all --enable=govet,errcheck,staticcheck,gosimple
+          skip-cache: true
+          skip-pkg-cache: true
+          skip-build-cache: true
       - name: test
         run: go test -v ./...
