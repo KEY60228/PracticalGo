@@ -4,26 +4,52 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
+	"strconv"
+	"time"
 )
 
-type Rectangle struct {
-	Width  int `json:"width"`
-	Height int `json:"height"`
+type Record struct {
+	ProcessID string `json:"process_id"`
+	DeletedAt JSTime `json:"deleted_at"`
+}
+
+type JSTime time.Time
+
+func (t JSTime) MarshalJSON() ([]byte, error) {
+	tt := time.Time(t)
+	if tt.IsZero() {
+		return []byte("null"), nil
+	}
+	v := strconv.Itoa(int(tt.UnixMilli()))
+	return []byte(v), nil
+}
+
+func (t *JSTime) UnmarshalJSON(data []byte) error {
+	var jsonNumber json.Number
+	err := json.Unmarshal(data, &jsonNumber)
+	if err != nil {
+		return err
+	}
+	unix, err := jsonNumber.Int64()
+	if err != nil {
+		return err
+	}
+	*t = JSTime(time.Unix(0, unix))
+	return nil
 }
 
 func main() {
-	f, err := os.Open("square.json")
-	if err != nil {
-		log.Fatal(err)
+	r := &Record{
+		ProcessID: "0001",
+		DeletedAt: JSTime(time.Now()),
 	}
-	defer f.Close()
+	fmt.Printf("%+v\n", r)
+	b, _ := json.Marshal(r)
+	fmt.Println(string(b))
 
-	var rect Rectangle
-	d := json.NewDecoder(f)
-	d.DisallowUnknownFields()
-	if err := d.Decode(&rect); err != nil {
+	var r2 *Record
+	if err := json.Unmarshal([]byte(string(b)), &r2); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%+v\n", rect)
+	fmt.Printf("%+v\n", time.Time(r2.DeletedAt).Format(time.RFC3339Nano))
 }
