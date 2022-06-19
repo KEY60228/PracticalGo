@@ -4,52 +4,51 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
-	"time"
+	"os"
 )
 
-type Record struct {
-	ProcessID string `json:"process_id"`
-	DeletedAt JSTime `json:"deleted_at"`
+type Response struct {
+	Type      string          `json:"type"`
+	Timestamp int             `json:"timestamp"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
-type JSTime time.Time
-
-func (t JSTime) MarshalJSON() ([]byte, error) {
-	tt := time.Time(t)
-	if tt.IsZero() {
-		return []byte("null"), nil
-	}
-	v := strconv.Itoa(int(tt.UnixMilli()))
-	return []byte(v), nil
+type Message struct {
+	ID        string  `json:"id"`
+	UserID    string  `json:"user_id"`
+	Message   string  `json:"message"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
-func (t *JSTime) UnmarshalJSON(data []byte) error {
-	var jsonNumber json.Number
-	err := json.Unmarshal(data, &jsonNumber)
-	if err != nil {
-		return err
-	}
-	unix, err := jsonNumber.Int64()
-	if err != nil {
-		return err
-	}
-	*t = JSTime(time.Unix(0, unix))
-	return nil
+type Sensor struct {
+	ID        string `json:"id"`
+	DeviceID  string `json:"device_id`
+	Result    string `json:"result"`
+	ProductID string `json:"product_id"`
 }
 
 func main() {
-	r := &Record{
-		ProcessID: "0001",
-		DeletedAt: JSTime(time.Now()),
-	}
-	fmt.Printf("%+v\n", r)
-	b, _ := json.Marshal(r)
-	fmt.Println(string(b))
-
-	var r2 *Record
-	if err := json.Unmarshal([]byte(string(b)), &r2); err != nil {
+	f, err := os.Open("message_a.json")
+	// f, err := os.Open("message_b.json")
+	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%+v\n", time.Time(r2.DeletedAt).Format(time.RFC3339Nano))
+	defer f.Close()
+
+	var r Response
+	if err := json.NewDecoder(f).Decode(&r); err != nil {
+		log.Fatal(err)
+	}
+
+	switch r.Type {
+	case "message":
+		var m Message
+		_ = json.Unmarshal(r.Payload, &m)
+		fmt.Printf("Message: %+v\n", m)
+	case "sensor":
+		var s Sensor
+		_ = json.Unmarshal(r.Payload, &s)
+		fmt.Printf("Sensor: %+v\n", s)
+	}
 }
