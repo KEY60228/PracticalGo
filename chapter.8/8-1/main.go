@@ -3,24 +3,27 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
 )
 
-type Bottle struct {
-	Name  string `json:"name"`
-	Price int    `json:"price,omitempty"`
-	KCal  *int   `json:"kcal,omitempty"`
+type Rectangle struct {
+	Width  int `json:"width"`
+	Height int `json:"height"`
 }
 
 func main() {
-	b := Bottle{
-		Name:  "ミネラルウォーター",
-		Price: 0,
-		KCal:  Int(0),
+	f, err := os.Open("square.json")
+	if err != nil {
+		log.Fatal(err)
 	}
-	out, _ := json.Marshal(b)
-	fmt.Println(string(out))
-}
+	defer f.Close()
 
-func Int(v int) *int {
-	return &v
+	var rect Rectangle
+	d := json.NewDecoder(f)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&rect); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%+v\n", rect)
 }
