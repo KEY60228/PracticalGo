@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/jackc/pgx/v4"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/gchaincl/sqlhooks"
+	"github.com/jackc/pgx/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -29,27 +31,26 @@ type User struct {
 	CreatedAt time.Time
 }
 
-var _ pgx.Logger = (*logger)(nil)
+var _ sqlhooks.Hooks = (*hook)(nil)
 
-type logger struct{}
+type hook struct{}
 
-func (l *logger) Log(ctx context.Context, level pgx.LogLevel, msg string, data map[string]interface{}) {
-	if msg == "Query" {
-		log.Printf("SQL:\n%v\nARGS:%v\n", data["sql"], data["args"])
-	}
+func (h *hook) Before(ctx context.Context, query string, args ...interface{}) (context.Context, error) {
+	log.Printf("SQL:\n%v\nArgs:\n%v\n", query, args)
+	return ctx, nil
+}
+
+func (h *hook) After(ctx context.Context, query string, args ...interface{}) (context.Context, error) {
+	return ctx, nil
 }
 
 func main() {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", PostgresHost, PostgresPort, PostgresUser, PostgresDB, PostgresPassword)
 	ctx := context.Background()
 
-	config, err := pgx.ParseConfig(dsn)
-	if err != nil {
-		log.Fatalf("parse config: %v\n", err)
-	}
-	config.Logger = &logger{}
+	sql.Register("postgres-proxy", sqlhooks.Wrap(stdlib.GetDefaultDriver(), &hook{}))
 
-	conn, err := pgx.ConnectConfig(ctx, config)
+	db, err := sqlx.Connect("postgres-proxy", dsn)
 	if err != nil {
 		log.Fatalf("connect: %v\n", err)
 	}
@@ -57,24 +58,9 @@ func main() {
 	sql := `SELECT schemaname, tablename FROM pg_tables WHERE schemaname = $1;`
 	args := `information_schema`
 
-	rows, err := conn.Query(ctx, sql, args)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
 	var pgtables []PgTable
-	for rows.Next() {
-		var s string
-		var t string
-		if err := rows.Scan(&s, &t); err != nil {
-			log.Fatalf("Scan: %v\n", err)
-		}
-		pgtables = append(pgtables, PgTable{SchemaName: s, TableName: t})
-	}
-
-	if err := rows.Err(); err != nil {
-		log.Fatal(err)
+	if err := db.SelectContext(ctx, &pgtables, sql, args); err != nil {
+		log.Fatalf("select: %v\n", err)
 	}
 
 	for _, table := range pgtables {
