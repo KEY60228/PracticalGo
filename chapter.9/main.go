@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
-	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/jackc/pgx/v4"
 )
 
 const (
@@ -26,38 +24,28 @@ type User struct {
 }
 
 func main() {
-	dsn := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", PostgresHost, PostgresPort, PostgresUser, PostgresDB, PostgresPassword)
-	db, err := sql.Open("pgx", dsn)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// dsn := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", PostgresHost, PostgresPort, PostgresUser, PostgresDB, PostgresPassword)
 	ctx := context.Background()
-	tx, err := db.BeginTx(ctx, nil)
+
+	conn, err := pgx.Connect(ctx, fmt.Sprintf("postgres://%s:%s@%s:%d/%s", PostgresUser, PostgresPassword, PostgresHost, PostgresPort, PostgresDB))
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer tx.Rollback()
 
-	users := []User{
+	txn, err := conn.Begin(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	users := [][]interface{}{
 		{"0003", "Duke", time.Now()},
 		{"0004", "KEY", time.Now()},
 		{"0005", "vessy", time.Now()},
 	}
 
-	valueStrings := make([]string, 0, len(users))
-	valueArgs := make([]interface{}, 0, len(users)*3)
-
-	number := 1
-	for _, u := range users {
-		valueStrings = append(valueStrings, fmt.Sprintf(" ($%d, $%d, $%d)", number, number+1, number+2))
-		valueArgs = append(valueArgs, u.UserID)
-		valueArgs = append(valueArgs, u.UserName)
-		valueArgs = append(valueArgs, u.CreatedAt)
-		number += 3
-	}
-
-	query := fmt.Sprintf("INSERT INTO users (user_id, user_name, created_at) VALUES %s;", strings.Join(valueStrings, ","))
-	if _, err := db.ExecContext(ctx, query, valueArgs...); err != nil {
+	i, err := txn.CopyFrom(ctx, pgx.Identifier{"users"}, []string{"user_id", "user_name", "created_at"}, pgx.CopyFromRows(users))
+	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Println(i)
 }
