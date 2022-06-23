@@ -31,24 +31,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = db.Ping()
-	if err != nil {
+	userService := NewUserService(db)
+
+	userID := "0002"
+	userName := "PHPer"
+	if err := userService.UpdateName(context.TODO(), userID, userName); err != nil {
 		log.Fatal(err)
 	}
-
-	userID := "0001"
-	var userName string
-	var createdAt time.Time
-	err = db.QueryRowContext(context.TODO(), `SELECT user_name, created_at FROM users WHERE user_id = $1;`, userID).Scan(&userName, &createdAt)
-	if err != nil {
-		log.Fatalf("query row(user_id=%s): %v", userID, err)
-	}
-
-	u := User{
-		UserID:    userID,
-		UserName:  userName,
-		CreatedAt: createdAt,
-	}
-
-	fmt.Println(u)
 }
