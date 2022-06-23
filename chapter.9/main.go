@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -43,18 +44,20 @@ func main() {
 		{"0005", "vessy", time.Now()},
 	}
 
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO users(user_id, user_name, created_at) VALUES ($1, $2, $3);")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close()
+	valueStrings := make([]string, 0, len(users))
+	valueArgs := make([]interface{}, 0, len(users)*3)
 
+	number := 1
 	for _, u := range users {
-		if _, err := stmt.ExecContext(ctx, u.UserID, u.UserName, u.CreatedAt); err != nil {
-			log.Fatal(err)
-		}
+		valueStrings = append(valueStrings, fmt.Sprintf(" ($%d, $%d, $%d)", number, number+1, number+2))
+		valueArgs = append(valueArgs, u.UserID)
+		valueArgs = append(valueArgs, u.UserName)
+		valueArgs = append(valueArgs, u.CreatedAt)
+		number += 3
 	}
-	if err := tx.Commit(); err != nil {
+
+	query := fmt.Sprintf("INSERT INTO users (user_id, user_name, created_at) VALUES %s;", strings.Join(valueStrings, ","))
+	if _, err := db.ExecContext(ctx, query, valueArgs...); err != nil {
 		log.Fatal(err)
 	}
 }
