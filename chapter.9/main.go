@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -31,12 +32,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	txAdmin := NewTxAdmin(db)
-	userService := NewUserService(*txAdmin)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	userID := "0002"
-	userName := "PHPer"
-	if err := userService.UpdateName(context.TODO(), userID, userName); err != nil {
-		log.Fatal(err)
+	if _, err := db.ExecContext(ctx, "SELECT pg_sleep(100)"); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			log.Println("canceling query")
+		} else {
+			log.Fatal(err)
+		}
 	}
 }
