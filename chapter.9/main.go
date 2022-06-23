@@ -7,9 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/gchaincl/sqlhooks"
-	"github.com/jackc/pgx/stdlib"
-	"github.com/jmoiron/sqlx"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 const (
@@ -20,50 +18,43 @@ const (
 	PostgresDB       = "go"
 )
 
-type PgTable struct {
-	SchemaName string
-	TableName  string
-}
-
 type User struct {
 	UserID    string
 	UserName  string
 	CreatedAt time.Time
 }
 
-var _ sqlhooks.Hooks = (*hook)(nil)
-
-type hook struct{}
-
-func (h *hook) Before(ctx context.Context, query string, args ...interface{}) (context.Context, error) {
-	log.Printf("SQL:\n%v\nArgs:\n%v\n", query, args)
-	return ctx, nil
-}
-
-func (h *hook) After(ctx context.Context, query string, args ...interface{}) (context.Context, error) {
-	return ctx, nil
-}
-
 func main() {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable", PostgresHost, PostgresPort, PostgresUser, PostgresDB, PostgresPassword)
-	ctx := context.Background()
-
-	sql.Register("postgres-proxy", sqlhooks.Wrap(stdlib.GetDefaultDriver(), &hook{}))
-
-	db, err := sqlx.Connect("postgres-proxy", dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		log.Fatalf("connect: %v\n", err)
+		log.Fatal(err)
+	}
+	ctx := context.Background()
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tx.Rollback()
+
+	users := []User{
+		{"0003", "Duke", time.Now()},
+		{"0004", "KEY", time.Now()},
+		{"0005", "vessy", time.Now()},
 	}
 
-	sql := `SELECT schemaname, tablename FROM pg_tables WHERE schemaname = $1;`
-	args := `information_schema`
-
-	var pgtables []PgTable
-	if err := db.SelectContext(ctx, &pgtables, sql, args); err != nil {
-		log.Fatalf("select: %v\n", err)
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO users(user_id, user_name, created_at) VALUES ($1, $2, $3);")
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer stmt.Close()
 
-	for _, table := range pgtables {
-		fmt.Println(table)
+	for _, u := range users {
+		if _, err := stmt.ExecContext(ctx, u.UserID, u.UserName, u.CreatedAt); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		log.Fatal(err)
 	}
 }
