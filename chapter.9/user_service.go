@@ -20,9 +20,12 @@ func (s *UserService) UpdateName(ctx context.Context, userID string, userName st
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
+
 	if _, err := tx.ExecContext(ctx, "UPDATE users SET user_name = $1 WHERE user_id = $2", userName, userID); err != nil {
 		tx.Rollback()
 		return err
 	}
+
 	return tx.Commit()
 }
