@@ -2,30 +2,24 @@ package main
 
 import (
 	"context"
-	"database/sql"
 )
 
 type UserService struct {
-	db *sql.DB
+	tx txAdmin
 }
 
-func NewUserService(db *sql.DB) *UserService {
+func NewUserService(tx txAdmin) *UserService {
 	return &UserService{
-		db: db,
+		tx: tx,
 	}
 }
 
 func (s *UserService) UpdateName(ctx context.Context, userID string, userName string) error {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return err
+	updateFunc := func(ctx context.Context) error {
+		if _, err := s.tx.ExecContext(ctx, "UPDATE users SET user_name = $1 WHERE user_id = $2", userName, userID); err != nil {
+			return err
+		}
+		return nil
 	}
-	defer tx.Rollback()
-
-	if _, err := tx.ExecContext(ctx, "UPDATE users SET user_name = $1 WHERE user_id = $2", userName, userID); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit()
+	return s.tx.Transaction(ctx, updateFunc)
 }

@@ -31,7 +31,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	userService := NewUserService(db)
+	txAdmin := NewTxAdmin(db)
+	userService := NewUserService(*txAdmin)
 
 	userID := "0002"
 	userName := "PHPer"
