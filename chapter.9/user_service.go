@@ -2,24 +2,40 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 )
 
 type UserService struct {
-	tx txAdmin
+	db *sql.DB
 }
 
-func NewUserService(tx txAdmin) *UserService {
+func NewUserService(db *sql.DB) *UserService {
 	return &UserService{
-		tx: tx,
+		db: db,
 	}
 }
 
-func (s *UserService) UpdateName(ctx context.Context, userID string, userName string) error {
-	updateFunc := func(ctx context.Context) error {
-		if _, err := s.tx.ExecContext(ctx, "UPDATE users SET user_name = $1 WHERE user_id = $2", userName, userID); err != nil {
-			return err
-		}
-		return nil
+type User struct {
+	UserID   string
+	UserName string
+	// CreatedAt time.Time
+}
+
+func (s *UserService) FetchUser(ctx context.Context, userID string) (*User, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT user_id, user_name FROM users WHERE user_id = $1;`, userID)
+	user, err := s.scanUser(row)
+	if err != nil {
+		return nil, fmt.Errorf("scan user: %w", err)
 	}
-	return s.tx.Transaction(ctx, updateFunc)
+	return user, nil
+}
+
+func (s *UserService) scanUser(row *sql.Row) (*User, error) {
+	var u User
+	err := row.Scan(&u.UserID, &u.UserName)
+	if err != nil {
+		return nil, fmt.Errorf("row scan: %w", err)
+	}
+	return &u, nil
 }
