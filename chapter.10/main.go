@@ -4,66 +4,31 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"strings"
-	"sync"
+	"log"
 
 	"github.com/go-playground/validator"
 )
 
-type Comment struct {
-	Message  string `validate:"required,min=1,max=140"`
-	UserName string `validate:"required,min=1,max=15"`
+type Book struct {
+	Title string `validate:"required"`
+	Price *int   `validate:"required"`
 }
 
 func main() {
-	var mutex = &sync.RWMutex{}
-	comments := make([]Comment, 0, 100)
+	s := `{"Title":"Real World HTTP ミニ版", "Price":0}`
+	var b Book
+	if err := json.Unmarshal([]byte(s), &b); err != nil {
+		log.Fatal(err)
+	}
 
-	http.HandleFunc("/comments", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch r.Method {
-		case http.MethodGet:
-			mutex.RLock()
-			if err := json.NewEncoder(w).Encode(comments); err != nil {
-				http.Error(w, fmt.Sprintf(`{"status":"%s"}`, err), http.StatusInternalServerError)
-				return
+	if err := validator.New().Struct(b); err != nil {
+		var ve validator.ValidationErrors
+		if errors.As(err, &ve) {
+			for _, fe := range ve {
+				log.Fatalf("フィールド%sが%s違反です (値: %v)\n", fe.Field(), fe.Tag(), fe.Value())
 			}
-			mutex.RUnlock()
-		case http.MethodPost:
-			var c Comment
-			if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-				http.Error(w, fmt.Sprintf(`{"status":"%s"}`, err), http.StatusInternalServerError)
-				return
-			}
-			validate := validator.New()
-			if err := validate.Struct(c); err != nil {
-				var out []string
-				var ve validator.ValidationErrors
-				if errors.As(err, &ve) {
-					for _, fe := range ve {
-						switch fe.Field() {
-						case "Message":
-							out = append(out, "Messageは1-140文字です")
-						case "UserName":
-							out = append(out, "UserNameは1-15文字です")
-						}
-					}
-				}
-				http.Error(w, fmt.Sprintf(`{"status":"%s"}`, strings.Join(out, ",")), http.StatusBadRequest)
-				return
-			}
-
-			mutex.Lock()
-			comments = append(comments, c)
-			mutex.Unlock()
-
-			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(`{"status":"created"}`))
-		default:
-			http.Error(w, `{"status":"permits only GET or POST"}`, http.StatusMethodNotAllowed)
 		}
-	})
+	}
 
-	http.ListenAndServe(":8888", nil)
+	fmt.Println(b)
 }
