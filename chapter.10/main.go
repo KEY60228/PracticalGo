@@ -1,34 +1,24 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
-
-	"github.com/go-playground/validator"
+	"net/http"
 )
 
-type Book struct {
-	Title string `validate:"required"`
-	Price *int   `validate:"required"`
+func main() {
+	http.HandleFunc("/params", handleParams)
+	http.ListenAndServe("127.0.0.1:8888", nil)
 }
 
-func main() {
-	s := `{"Title":"Real World HTTP ミニ版", "Price":0}`
-	var b Book
-	if err := json.Unmarshal([]byte(s), &b); err != nil {
-		log.Fatal(err)
-	}
+func handleParams(w http.ResponseWriter, r *http.Request) {
+	word := r.FormValue("searchword")
+	log.Printf("search word = %s\n", word)
 
-	if err := validator.New().Struct(b); err != nil {
-		var ve validator.ValidationErrors
-		if errors.As(err, &ve) {
-			for _, fe := range ve {
-				log.Fatalf("フィールド%sが%s違反です (値: %v)\n", fe.Field(), fe.Tag(), fe.Value())
-			}
-		}
-	}
+	words, ok := r.Form["searchword"]
+	log.Printf("search words = %v has values %v\n", words, ok)
 
-	fmt.Println(b)
+	log.Print("== all queries ==")
+	for key, values := range r.Form {
+		log.Printf("%s: %v\n", key, values)
+	}
 }
