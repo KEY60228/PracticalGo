@@ -1,45 +1,20 @@
 package main
 
 import (
-	"io"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 )
 
 func main() {
-	http.HandleFunc("/file", handleFile)
-	http.ListenAndServe("127.0.0.1:8888", nil)
-}
-
-func handleFile(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseMultipartForm(32 * 1024 * 1024)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	f, h, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	log.Println(h.Filename)
-
-	o, err := os.Create(h.Filename)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer o.Close()
-
-	_, err = io.Copy(o, f)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	value := r.PostFormValue("data")
-	log.Printf("value = %s\n", value)
+	yes := 0
+	no := 0
+	mux := http.NewServeMux()
+	mux.Handle("/asset/", http.StripPrefix("/asset/", http.FileServer(http.Dir("."))))
+	mux.HandleFunc("/poll/y", func(w http.ResponseWriter, r *http.Request) { yes++ })
+	mux.HandleFunc("/poll/n", func(w http.ResponseWriter, r *http.Request) { no++ })
+	mux.HandleFunc("/result", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "賛成: %d, 反対: %d", yes, no)
+	})
+	log.Fatal(http.ListenAndServe("localhost:8888", mux))
 }
