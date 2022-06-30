@@ -1,28 +1,24 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/go-chi/chi"
 )
 
-func main() {
-	yes := 0
-	no := 0
-	r := chi.NewRouter()
-	r.Post("/poll/{answer}", func(w http.ResponseWriter, r *http.Request) {
-		if chi.URLParam(r, "answer") == "y" {
-			yes++
-		} else {
-			no++
-		}
-	})
-	r.Get("result", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "賛成: %d, 反対; %d", yes, no)
-	})
-	r.Handle("/asset/*", http.StripPrefix("/asset/", http.FileServer(http.Dir("."))))
+func Healthz(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
 
-	log.Fatal(http.ListenAndServe("localhost:8888", r))
+func MiddlewareLogging(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("start %s\n", r.URL)
+		next.ServeHTTP(w, r)
+		log.Printf("finish %s\n", r.URL)
+	})
+}
+
+func main() {
+	http.Handle("/healthz", MiddlewareLogging(http.HandlerFunc(Healthz)))
+	http.ListenAndServe("localhost:8888", nil)
 }
