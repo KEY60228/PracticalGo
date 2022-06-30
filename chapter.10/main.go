@@ -5,20 +5,35 @@ import (
 	"net/http"
 )
 
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func NewLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
+	return &loggingResponseWriter{w, http.StatusOK}
+}
+
+func (lrw *loggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
+}
+
+func wrapHandlerWithLogging(wrappedHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lrw := NewLoggingResponseWriter(w)
+		wrappedHandler.ServeHTTP(lrw, r)
+		statusCode := lrw.statusCode
+		log.Printf("%d %s", statusCode, http.StatusText(statusCode))
+	})
+}
+
 func Healthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
-func MiddlewareLogging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("start %s\n", r.URL)
-		next.ServeHTTP(w, r)
-		log.Printf("finish %s\n", r.URL)
-	})
-}
-
 func main() {
-	http.Handle("/healthz", MiddlewareLogging(http.HandlerFunc(Healthz)))
+	http.Handle("/healthz", wrapHandlerWithLogging(http.HandlerFunc(Healthz)))
 	http.ListenAndServe("localhost:8888", nil)
 }
