@@ -1,39 +1,92 @@
 package main
 
 import (
+	"context"
+	"embed"
+	"errors"
+	"fmt"
+	"io"
 	"log"
+	"mime"
 	"net/http"
+	"os"
+	"os/signal"
+	"path"
+	"path/filepath"
 	"time"
 
-	"golang.org/x/time/rate"
+	"github.com/go-chi/chi"
 )
 
-var limiter = rate.NewLimiter(rate.Every(time.Minute/1), 10)
+//go:embed vite-project/dist/*
+var assets embed.FS
 
-func LimitHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !limiter.Allow() {
-			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+func tryRead(requestedPath string, w http.ResponseWriter) error {
+	log.Println(requestedPath)
+	f, err := assets.Open(path.Join("vite-project", "dist", requestedPath))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	stat, _ := f.Stat()
+	if stat.IsDir() {
+		return errors.New("path is dir")
+	}
+
+	ext := filepath.Ext(requestedPath)
+	var contentType string
+	if m := mime.TypeByExtension(ext); m != "" {
+		contentType = m
+	} else {
+		contentType = "appliation/octet-stream"
+	}
+	w.Header().Set("Content-Type", contentType)
+	io.Copy(w, f)
+	return nil
 }
 
-func MiddlewareLogging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("start %s\n", r.URL)
-		next.ServeHTTP(w, r)
-		log.Printf("finish %s\n", r.URL)
+func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+	err := tryRead(r.URL.Path, w)
+	if err == nil {
+		return
+	}
+
+	err = tryRead("index.html", w)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func newHandler() http.Handler {
+	router := chi.NewRouter()
+
+	router.Route("/api", func(r chi.Router) {
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		})
 	})
+	router.NotFound(notFoundHandler)
+
+	return router
 }
 
 func main() {
-	http.Handle("/healthz", LimitHandler(MiddlewareLogging(http.HandlerFunc(Healthz))))
-	http.ListenAndServe("localhost:8888", nil)
-}
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
+	defer cancel()
 
-func Healthz(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	server := &http.Server{
+		Addr:    "localhost:8000",
+		Handler: newHandler(),
+	}
+
+	go func() {
+		<-ctx.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		server.Shutdown(ctx)
+	}()
+	fmt.Printf("start receiving at :8000")
+	fmt.Fprintln(os.Stderr, server.ListenAndServe())
 }
