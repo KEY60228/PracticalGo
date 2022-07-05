@@ -1,25 +1,37 @@
 package main
 
 import (
-	"errors"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 )
 
+type User struct {
+	Name string
+	Addr string
+}
+
 func main() {
-	res, err := http.Get("http://example.com")
+	u := User{
+		Name: "O'Reilly Japan",
+		Addr: "東京都新宿区四谷町",
+	}
+
+	payload, err := json.Marshal(u)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res, err := http.Post("http://example.com/", "application/json", bytes.NewBuffer(payload))
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
-		log.Fatal(errors.New(res.Status))
-	}
-
-	body, err := io.ReadAll(res.Body)
+	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
