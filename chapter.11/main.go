@@ -2,35 +2,26 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"time"
 )
 
-type loggingRoundTripper struct {
+type basicAuthRoundTripper struct {
 	transport http.RoundTripper
-	logger    func(string, ...interface{})
+	username  string
+	password  string
 }
 
-func (t *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.logger == nil {
-		t.logger = log.Printf
-	}
-
-	start := time.Now()
-	res, err := t.transport.RoundTrip(req)
-
-	if res != nil {
-		t.logger("%s %s %s, duration: %d", req.Method, req.URL.String(), res.Status, time.Since(start))
-	}
-
-	return res, err
+func (rt *basicAuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.SetBasicAuth(rt.username, rt.password)
+	return rt.transport.RoundTrip(req)
 }
 
 func main() {
 	client := &http.Client{
-		Transport: &loggingRoundTripper{
+		Transport: &basicAuthRoundTripper{
 			transport: http.DefaultTransport,
 		},
 	}
@@ -46,11 +37,10 @@ func main() {
 	}
 	defer res.Body.Close()
 
-	// body, err := ioutil.ReadAll(res.Body)
 	_, err = ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// fmt.Println(string(body))
+	fmt.Println(res.Status)
 }
