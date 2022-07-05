@@ -1,31 +1,28 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
-type User struct {
-	Name string
-	Addr string
-}
-
 func main() {
-	u := User{
-		Name: "O'Reilly Japan",
-		Addr: "東京都新宿区四谷町",
+	client := &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: http.DefaultTransport,
 	}
 
-	payload, err := json.Marshal(u)
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, "GET", "http://example.com", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+	req.Header.Add("Authorization", "Bearer XXXXXX")
 
-	res, err := http.Post("http://example.com/", "application/json", bytes.NewBuffer(payload))
+	res, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
