@@ -2,25 +2,43 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"time"
 )
 
-func main() {
-	client := &http.Client{
-		Timeout:   10 * time.Second,
-		Transport: http.DefaultTransport,
+type loggingRoundTripper struct {
+	transport http.RoundTripper
+	logger    func(string, ...interface{})
+}
+
+func (t *loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.logger == nil {
+		t.logger = log.Printf
 	}
 
-	ctx := context.Background()
-	req, err := http.NewRequestWithContext(ctx, "GET", "http://example.com", nil)
+	start := time.Now()
+	res, err := t.transport.RoundTrip(req)
+
+	if res != nil {
+		t.logger("%s %s %s, duration: %d", req.Method, req.URL.String(), res.Status, time.Since(start))
+	}
+
+	return res, err
+}
+
+func main() {
+	client := &http.Client{
+		Transport: &loggingRoundTripper{
+			transport: http.DefaultTransport,
+		},
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "http://example.com", nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	req.Header.Add("Authorization", "Bearer XXXXXX")
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -28,10 +46,11 @@ func main() {
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	// body, err := ioutil.ReadAll(res.Body)
+	_, err = ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(string(body))
+	// fmt.Println(string(body))
 }
