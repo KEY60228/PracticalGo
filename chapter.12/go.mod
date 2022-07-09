@@ -2,7 +2,11 @@ module PracticalGo/chapter.12
 
 go 1.17
 
-require github.com/rs/zerolog v1.27.0
+require (
+	github.com/go-chi/chi v1.5.4
+	github.com/rs/xid v1.3.0
+	github.com/rs/zerolog v1.27.0
+)
 
 require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
