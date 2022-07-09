@@ -4,10 +4,18 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/rs/zerolog"
+	"go.uber.org/zap"
 )
+
+type logForwarder struct {
+	l *zap.SugaredLogger
+}
+
+func (fw *logForwarder) Write(p []byte) (int, error) {
+	fw.l.Errorw(string(p))
+	return len(p), nil
+}
 
 func main() {
 	handler := func(w http.ResponseWriter, r *http.Request) {
@@ -15,12 +23,16 @@ func main() {
 	}
 	http.HandleFunc("/test", handler)
 
-	logger := zerolog.New(os.Stderr).With().Timestamp().Logger()
+	l, err := zap.NewDevelopment()
+	if err != nil {
+		l = zap.NewNop()
+	}
+	logger := l.Sugar()
 
 	server := &http.Server{
 		Addr:     "localhost:8888",
-		ErrorLog: log.New(logger, "", 0),
+		ErrorLog: log.New(&logForwarder{l: logger}, "", 0),
 	}
 
-	logger.Fatal().Msgf("server: %v", server.ListenAndServe())
+	logger.Fatal("server: %v", server.ListenAndServe())
 }
