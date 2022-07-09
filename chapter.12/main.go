@@ -1,14 +1,13 @@
 package main
 
 import (
-	"io"
-	"log"
-	"os"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	file, _ := os.Create("log.txt")
-	log.SetOutput(io.MultiWriter(file, os.Stderr))
-
-	log.Println("ファイルと標準エラー出力に同時に出力")
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	log.Debug().Msgf("debug") // 出力されない
+	log.Info().Msg("info")
+	log.Error().Msg("error")
 }
