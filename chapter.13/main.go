@@ -1,25 +1,30 @@
 package main
 
-import (
-	"io"
-	"log"
-	"net/http"
+import "fmt"
 
-	"github.com/go-chi/chi"
-)
-
-func initServer() http.Handler {
-	r := chi.NewRouter()
-	r.Get("/fortune", fortuneHandler)
-	return r
-}
-
-func fortuneHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	io.WriteString(w, `{"fortune": "大吉"}`)
+type User struct {
+	UserID    string
+	UserName  string
+	Languages []string
 }
 
 func main() {
-	log.Println("open at localhost:8888")
-	log.Println(http.ListenAndServe("localhost:8888", initServer()))
+	fmt.Println(getTom())
+	fmt.Println(getTom2())
+}
+
+func getTom() User {
+	return User{
+		UserID:    "001",
+		UserName:  "Tom",
+		Languages: []string{"Java", "Go", "Rust"},
+	}
+}
+
+func getTom2() User {
+	return User{
+		UserID:    "001",
+		UserName:  "Tom",
+		Languages: []string{"Java", "Go"},
+	}
 }
