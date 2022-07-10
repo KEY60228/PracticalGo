@@ -1,74 +1,29 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
-func TestMain(m *testing.M) {
-	setup()
-	defer teardown()
-	m.Run()
-}
+func TestServerRequest(t *testing.T) {
+	s := httptest.NewServer(initServer())
 
-func setup() {
-	fmt.Println("tests start")
-}
-
-func teardown() {
-	fmt.Println("tests end")
-}
-
-func TestCalc(t *testing.T) {
-	type args struct {
-		a        int
-		b        int
-		operator string
+	r, err := http.Get(s.URL + "/fortune")
+	if err != nil {
+		t.Errorf("http get err should be nil: %v", err)
+		return
 	}
-	tests := map[string]struct {
-		args   args
-		want   int
-		hasErr bool
-	}{
-		"足し算": {
-			args: args{
-				a:        10,
-				b:        2,
-				operator: "+",
-			},
-			want:   12,
-			hasErr: false,
-		},
-		"不正な演算子": {
-			args: args{
-				a:        10,
-				b:        2,
-				operator: "?",
-			},
-			hasErr: true,
-		},
+	defer r.Body.Close()
+
+	var j map[string]string
+	if err := json.NewDecoder(r.Body).Decode(&j); err != nil {
+		t.Errorf("json decode err should be nil: %v", err)
+		return
 	}
 
-	fmt.Println("TestCalc start")
-	defer func() {
-		fmt.Println("TestCalc done")
-	}()
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			fmt.Printf("test %v start\n", name)
-			defer func() {
-				fmt.Printf("test %v end\n", name)
-			}()
-
-			got, err := Calc(tt.args.a, tt.args.b, tt.args.operator)
-			if (err != nil) != tt.hasErr {
-				t.Errorf("Calc() error = %v, hasErr %v", err, tt.hasErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Calc() = %v, want %v", got, tt.want)
-			}
-		})
+	if j["fortune"] != "大吉" {
+		t.Errorf("result should be 大吉, but %s", j["fortune"])
 	}
 }

@@ -1,23 +1,25 @@
 package main
 
-import "fmt"
+import (
+	"io"
+	"log"
+	"net/http"
 
-func Calc(a int, b int, operator string) (int, error) {
-	switch operator {
-	case "+":
-		return a + b, nil
-	case "-":
-		return a - b, nil
-	case "*":
-		return a * b, nil
-	case "/":
-		if b == 0 {
-			return 0, fmt.Errorf("0除算は未定義です")
-		}
-		return a / b, nil
-	}
-	return 0, fmt.Errorf("予期しない演算子 %v が指定されました", operator)
+	"github.com/go-chi/chi"
+)
+
+func initServer() http.Handler {
+	r := chi.NewRouter()
+
+	r.Get("/fortune", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		io.WriteString(w, `{"fortune": "大吉"}`)
+	})
+
+	return r
 }
 
 func main() {
+	log.Println("open at localhost:8888")
+	log.Println(http.ListenAndServe("localhost:8888", initServer()))
 }
