@@ -10,13 +10,13 @@ import (
 
 func initServer() http.Handler {
 	r := chi.NewRouter()
-
-	r.Get("/fortune", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "application/json")
-		io.WriteString(w, `{"fortune": "大吉"}`)
-	})
-
+	r.Get("/fortune", fortuneHandler)
 	return r
+}
+
+func fortuneHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+	io.WriteString(w, `{"fortune": "大吉"}`)
 }
 
 func main() {
