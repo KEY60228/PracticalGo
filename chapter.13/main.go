@@ -1,30 +1,31 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+	"os"
+)
 
 type User struct {
-	id        string
-	UserName  string
-	Languages []string
+	Name    string
+	Address string
 }
 
 func main() {
-	fmt.Println(getTom())
-	fmt.Println(getTom2())
+	DumpUser(&User{
+		Name:    "KEY",
+		Address: "Japan",
+	})
 }
 
-func getTom() User {
-	return User{
-		id:        "001",
-		UserName:  "Tom",
-		Languages: []string{"Java", "Go"},
-	}
+func DumpUser(u *User) {
+	DumpUserTo(os.Stdout, u)
 }
 
-func getTom2() User {
-	return User{
-		id:        "002",
-		UserName:  "Tom",
-		Languages: []string{"Java", "Go"},
+func DumpUserTo(w io.Writer, u *User) {
+	if u.Address == "" {
+		fmt.Fprintf(w, "%s(住所不定)", u.Name)
+	} else {
+		fmt.Fprintf(w, "%s@%s", u.Name, u.Address)
 	}
 }
