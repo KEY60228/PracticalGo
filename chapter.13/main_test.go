@@ -1,14 +1,15 @@
 package main
 
-import (
-	"context"
-	"testing"
-	"time"
+import "testing"
 
-	"github.com/stretchr/testify/assert"
-)
+func BenchmarkAppendSlice(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		AppendSlice(10000, 111)
+	}
+}
 
-func TestNextMonth(t *testing.T) {
-	ctx := SetFixTime(context.Background(), time.Date(1980, time.December, 1, 0, 0, 0, 0, time.Local))
-	assert.Equal(t, time.January, NextMonth(ctx))
+func BenchmarkFirstAllocSlice(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		FirstAllocSlice(10000, 111)
+	}
 }
