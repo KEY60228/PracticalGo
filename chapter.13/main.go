@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 type User struct {
-	UserID    string
+	id        string
 	UserName  string
 	Languages []string
 }
@@ -15,15 +15,15 @@ func main() {
 
 func getTom() User {
 	return User{
-		UserID:    "001",
+		id:        "001",
 		UserName:  "Tom",
-		Languages: []string{"Java", "Go", "Rust"},
+		Languages: []string{"Java", "Go"},
 	}
 }
 
 func getTom2() User {
 	return User{
-		UserID:    "001",
+		id:        "002",
 		UserName:  "Tom",
 		Languages: []string{"Java", "Go"},
 	}
