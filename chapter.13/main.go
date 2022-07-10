@@ -1,31 +1,22 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"os"
+	"context"
+	"log"
+	"net/http"
 )
 
-type User struct {
-	Name    string
-	Address string
-}
-
 func main() {
-	DumpUser(&User{
-		Name:    "KEY",
-		Address: "Japan",
-	})
-}
+	client := http.Client{}
 
-func DumpUser(u *User) {
-	DumpUserTo(os.Stdout, u)
-}
-
-func DumpUserTo(w io.Writer, u *User) {
-	if u.Address == "" {
-		fmt.Fprintf(w, "%s(住所不定)", u.Name)
-	} else {
-		fmt.Fprintf(w, "%s@%s", u.Name, u.Address)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "http://example.com/movies/1985", nil)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
 }
