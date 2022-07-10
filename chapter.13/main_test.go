@@ -3,11 +3,13 @@ package main
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestTom(t *testing.T) {
 	tom := getTom()
 	tom2 := getTom2()
-	assert.Equal(t, tom, tom2)
+	if diff := cmp.Diff(tom, tom2); diff != "" {
+		t.Errorf("User value is mismatch (-tom +tom2):\n%s", diff)
+	}
 }
