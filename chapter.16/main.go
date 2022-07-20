@@ -1,48 +1,79 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sync/atomic"
+)
 
-type Account struct {
-	balance  int
-	transfer chan int
+type Task string
+
+type Result struct {
+	Value int64
+	Task  Task
+	Err   error
 }
 
-func NewAccount() *Account {
-	transfer := make(chan int)
-	r := &Account{0, transfer}
-	go func() {
-		for {
-			amount := <-transfer
-			r.balance += amount
+func worker(id int, tasks <-chan Task, results chan<- Result) {
+	for t := range tasks {
+		fmt.Printf("worker: %d task: %s\n", id, t)
+		s, err := os.Stat(string(t))
+		if err == nil && s.IsDir() {
+			err = fmt.Errorf("worker: %d err: %s is dir", id, string(t))
 		}
+		result := Result{
+			Task: t,
+		}
+		if err != nil {
+			result.Err = err
+		} else {
+			fmt.Printf("worker: %d path: %s size: %d\n", id, string(t), s.Size())
+			result.Value = s.Size()
+		}
+		results <- result
+	}
+}
+
+func TotalFileSize() int64 {
+	tasks := make(chan Task)
+	results := make(chan Result)
+
+	for i := 0; i < runtime.NumCPU(); i++ {
+		go worker(i, tasks, results)
+	}
+
+	inputDone := make(chan struct{})
+	var remainedCount int64
+	go func() {
+		filepath.Walk(runtime.GOROOT(), func(path string, info os.FileInfo, err error) error {
+			atomic.AddInt64(&remainedCount, 1)
+			tasks <- Task(path)
+			return nil
+		})
+		close(inputDone)
+		close(tasks)
 	}()
-	return r
-}
 
-func (a Account) GetBalance() int {
-	return a.balance
-}
-
-func (a Account) Transfer(amount int) {
-	a.transfer <- amount
+	var size int64
+	for {
+		select {
+		case result := <-results:
+			if result.Err != nil {
+				fmt.Printf("err %v for %s\n", result.Err, result.Task)
+			} else {
+				atomic.AddInt64(&size, result.Value)
+			}
+			atomic.AddInt64(&remainedCount, -1)
+		case <-inputDone:
+			if remainedCount == 0 {
+				return size
+			}
+		}
+	}
 }
 
 func main() {
-	a := NewAccount()
-
-	for {
-		var s string
-		fmt.Print("enter command: ")
-		fmt.Scan(&s)
-
-		switch s {
-		case "get":
-			fmt.Println(a.GetBalance())
-		case "add":
-			var i int
-			fmt.Print("enter amount: ")
-			fmt.Scan(&i)
-			a.Transfer(i)
-		}
-	}
+	fmt.Printf("total file size is %dMB\n", TotalFileSize()/1000/1000)
 }
