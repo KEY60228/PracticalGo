@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync/atomic"
 )
 
 type Task string
@@ -36,44 +35,40 @@ func worker(id int, tasks <-chan Task, results chan<- Result) {
 	}
 }
 
-func TotalFileSize() int64 {
-	tasks := make(chan Task)
+func fixedTasks(taskSrcs []Task) int64 {
+	tasks := make(chan Task, len(taskSrcs))
 	results := make(chan Result)
+	for _, src := range taskSrcs {
+		tasks <- src
+	}
+	close(tasks)
 
 	for i := 0; i < runtime.NumCPU(); i++ {
 		go worker(i, tasks, results)
 	}
 
-	inputDone := make(chan struct{})
-	var remainedCount int64
-	go func() {
-		filepath.Walk(runtime.GOROOT(), func(path string, info os.FileInfo, err error) error {
-			atomic.AddInt64(&remainedCount, 1)
-			tasks <- Task(path)
-			return nil
-		})
-		close(inputDone)
-		close(tasks)
-	}()
-
+	var count int
 	var size int64
 	for {
-		select {
-		case result := <-results:
-			if result.Err != nil {
-				fmt.Printf("err %v for %s\n", result.Err, result.Task)
-			} else {
-				atomic.AddInt64(&size, result.Value)
-			}
-			atomic.AddInt64(&remainedCount, -1)
-		case <-inputDone:
-			if remainedCount == 0 {
-				return size
-			}
+		result := <-results
+		count += 1
+		if result.Err != nil {
+			fmt.Printf("err %v for %s\n", result.Err, result.Task)
+		} else {
+			size += result.Value
+		}
+		if count == len(taskSrcs) {
+			break
 		}
 	}
+	return size
 }
 
 func main() {
-	fmt.Printf("total file size is %dMB\n", TotalFileSize()/1000/1000)
+	tasks := make([]Task, 0, 10000)
+	filepath.Walk(runtime.GOROOT(), func(path string, info os.FileInfo, err error) error {
+		tasks = append(tasks, Task(path))
+		return nil
+	})
+	fmt.Printf("total file size is %dMB\n", fixedTasks(tasks)/1000/1000)
 }
