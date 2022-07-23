@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"go.uber.org/ratelimit"
 )
 
 type Task string
@@ -15,8 +17,10 @@ type Result struct {
 	Err   error
 }
 
-func worker(id int, tasks <-chan Task, results chan<- Result) {
+func worker(id int, tasks <-chan Task, results chan<- Result, rt ratelimit.Limiter) {
 	for t := range tasks {
+		rt.Take()
+
 		fmt.Printf("worker: %d task: %s\n", id, t)
 		s, err := os.Stat(string(t))
 		if err == nil && s.IsDir() {
@@ -43,8 +47,9 @@ func fixedTasks(taskSrcs []Task) int64 {
 	}
 	close(tasks)
 
+	rl := ratelimit.New(100)
 	for i := 0; i < runtime.NumCPU(); i++ {
-		go worker(i, tasks, results)
+		go worker(i, tasks, results, rl)
 	}
 
 	var count int
