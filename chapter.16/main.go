@@ -1,53 +1,33 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"log"
-	"os/exec"
+	"sync"
 	"time"
 )
 
 func main() {
-	ctx := context.Background()
-	err := runJobs(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("done")
-}
-
-func runJobs(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	ec := make(chan error)
-	done := make(chan struct{})
-
-	for i := 0; i < 10; i++ {
-		go func() {
-			err := exec.CommandContext(ctx, "sleep", "30").Run()
-			if err != nil {
-				ec <- err
-			} else {
-				done <- struct{}{}
-			}
-		}()
-	}
+	var wg sync.WaitGroup
+	wg.Add(3)
 
 	go func() {
-		time.Sleep(10 * time.Second)
-		ec <- errors.New("accidental error")
+		time.Sleep(time.Second)
+		fmt.Println("Done: 1")
+		wg.Done()
 	}()
 
-	for i := 0; i < 10; i++ {
-		select {
-		case err := <-ec:
-			return err
-		case <-done:
-		}
-	}
+	go func() {
+		time.Sleep(time.Second * 2)
+		fmt.Println("Done: 2")
+		wg.Done()
+	}()
 
-	return nil
+	go func() {
+		time.Sleep(time.Second * 3)
+		fmt.Println("Done: 3")
+		wg.Done()
+	}()
+
+	wg.Wait()
+	fmt.Println("Done all tasks")
 }
