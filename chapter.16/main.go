@@ -1,33 +1,34 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	var wg sync.WaitGroup
-	wg.Add(3)
+	eg, _ := errgroup.WithContext(context.Background())
 
-	go func() {
+	eg.Go(func() error {
 		time.Sleep(time.Second)
 		fmt.Println("Done: 1")
-		wg.Done()
-	}()
+		return nil
+	})
 
-	go func() {
+	eg.Go(func() error {
 		time.Sleep(time.Second * 2)
 		fmt.Println("Done: 2")
-		wg.Done()
-	}()
+		return nil
+	})
 
-	go func() {
+	eg.Go(func() error {
 		time.Sleep(time.Second * 3)
 		fmt.Println("Done: 3")
-		wg.Done()
-	}()
+		return nil
+	})
 
-	wg.Wait()
-	fmt.Println("Done all tasks")
+	err := eg.Wait()
+	fmt.Println("Done all tasks", err)
 }
