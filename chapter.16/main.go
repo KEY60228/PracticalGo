@@ -1,34 +1,93 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"log"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 )
 
+type Future struct {
+	value int
+	wait  chan struct{}
+}
+
+func (f *Future) IsDone() bool {
+	select {
+	case <-f.wait:
+		return true
+	default:
+		return false
+	}
+}
+
+func (f *Future) Get() int {
+	<-f.wait
+	return f.value
+}
+
+type Promise struct {
+	f *Future
+}
+
+func (p *Promise) Submit(v int) {
+	p.f.value = v
+	close(p.f.wait)
+}
+
+func MakeFuturePromise() (*Future, *Promise) {
+	f := &Future{
+		wait: make(chan struct{}),
+	}
+	p := &Promise{
+		f: f,
+	}
+	return f, p
+}
+
 func main() {
-	eg, _ := errgroup.WithContext(context.Background())
+	fa, pa := MakeFuturePromise()
+	fb, pb := MakeFuturePromise()
+	fc, pc := MakeFuturePromise()
+	fd, pd := MakeFuturePromise()
 
-	eg.Go(func() error {
-		time.Sleep(time.Second)
-		fmt.Println("Done: 1")
-		return nil
-	})
+	go func() {
+		a := A()
+		pa.Submit(a)
+	}()
 
-	eg.Go(func() error {
-		time.Sleep(time.Second * 2)
-		fmt.Println("Done: 2")
-		return nil
-	})
+	go func() {
+		b := B()
+		pb.Submit(b)
+	}()
 
-	eg.Go(func() error {
-		time.Sleep(time.Second * 3)
-		fmt.Println("Done: 3")
-		return nil
-	})
+	go func() {
+		c := C(fa.Get(), fb.Get())
+		pc.Submit(c)
+	}()
 
-	err := eg.Wait()
-	fmt.Println("Done all tasks", err)
+	go func() {
+		d := D(fa.Get(), fc.Get())
+		pd.Submit(d)
+	}()
+
+	log.Printf("d: %d\n", fd.Get())
+}
+
+func A() int {
+	time.Sleep(time.Second)
+	return 10
+}
+
+func B() int {
+	time.Sleep(time.Second * 2)
+	return 5
+}
+
+func C(a int, b int) int {
+	time.Sleep(time.Second)
+	return a + b
+}
+
+func D(a int, c int) int {
+	time.Sleep(time.Second)
+	return a + c
 }
